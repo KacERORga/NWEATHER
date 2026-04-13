@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>NCPWEATHER — избранные города</title>
+    <title>NCPWEATHER — избранное (два блока)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -41,7 +41,7 @@
         .refresh-btn:hover { background: #e2f0ff; transform: rotate(15deg); }
         .refresh-btn:active { transform: rotate(30deg); }
         .date { color: #4f7d9c; font-weight: 500; }
-        .favorites-section { background: #f8faff; padding: 0.5rem 2rem 1rem 2rem; border-top: 1px solid #e2eff9; }
+        .favorites-section { background: #f8faff; padding: 0.5rem 2rem; border-bottom: 1px solid #e2eff9; }
         .favorites-title { font-size: 0.8rem; font-weight: 600; color: #0f4468; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .favorites-list { display: flex; flex-wrap: wrap; gap: 8px; }
         .favorite-chip { background: white; border: 1px solid #cbe5f5; border-radius: 40px; padding: 6px 14px; font-size: 0.8rem; font-weight: 500; color: #0f4468; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
@@ -90,7 +90,7 @@
     <div class="header">
         <div class="header-top">
             <div class="logo"><h1><i class="fas fa-cloud-sun-rain"></i> NCPWEATHER <span>избранное</span></h1></div>
-            <div class="badge"><i class="fas fa-star"></i> любимые города</div>
+            <div class="badge"><i class="fas fa-star"></i> два блока</div>
         </div>
     </div>
     <div class="search-panel">
@@ -103,13 +103,19 @@
         </div>
         <button id="geoBtn" class="geo-btn"><i class="fas fa-location-dot"></i> Моя геолокация</button>
     </div>
+    <!-- Верхний блок избранного -->
+    <div id="favoritesSectionTop" class="favorites-section" style="display: none;">
+        <div class="favorites-title"><i class="fas fa-star"></i> Избранные города (быстрый доступ)</div>
+        <div id="favoritesListTop" class="favorites-list"></div>
+    </div>
     <div id="weatherContent">
         <div class="loader" id="loadingSpinner" style="display: none;"><i class="fas fa-spinner fa-pulse"></i> <span id="loadingText">Загрузка...</span></div>
         <div id="mainData" style="display: none;"></div>
     </div>
-    <div id="favoritesSection" class="favorites-section" style="display: none;">
+    <!-- Нижний блок избранного -->
+    <div id="favoritesSectionBottom" class="favorites-section" style="display: none;">
         <div class="favorites-title"><i class="fas fa-star"></i> Избранные города</div>
-        <div id="favoritesList" class="favorites-list"></div>
+        <div id="favoritesListBottom" class="favorites-list"></div>
     </div>
     <div class="footer">
         <span><i class="fas fa-cloud-sun"></i> Данные Open-Meteo</span>
@@ -160,19 +166,19 @@
     function getCachedWeather(lat, lon) { return loadFromCache(`weather_${lat}_${lon}`); }
     function deleteCachedWeather(lat, lon) { localStorage.removeItem(`weather_${lat}_${lon}`); }
 
-    // ======================== ИЗБРАННЫЕ ГОРОДА ========================
-    let favorites = []; // каждый элемент: { displayName, lat, lon }
+    // ======================== ИЗБРАННЫЕ ГОРОДА (два блока) ========================
+    let favorites = [];
     function loadFavorites() {
         const saved = localStorage.getItem('ncpweather_favorites');
         if (saved) {
             try { favorites = JSON.parse(saved); } catch(e) { favorites = []; }
         } else { favorites = []; }
-        renderFavoritesList();
+        renderAllFavoritesLists();
     }
     function saveFavorites() {
         localStorage.setItem('ncpweather_favorites', JSON.stringify(favorites));
-        renderFavoritesList();
-        updateFavoriteStar(); // обновить звезду у текущего города
+        renderAllFavoritesLists();
+        updateFavoriteStar();
     }
     function addFavorite(displayName, lat, lon) {
         if (!favorites.some(f => f.lat === lat && f.lon === lon)) {
@@ -199,9 +205,9 @@
             }
         }
     }
-    function renderFavoritesList() {
-        const container = document.getElementById('favoritesList');
-        const section = document.getElementById('favoritesSection');
+    function renderFavoritesList(containerId, sectionId) {
+        const container = document.getElementById(containerId);
+        const section = document.getElementById(sectionId);
         if (!favorites.length) {
             section.style.display = 'none';
             return;
@@ -213,18 +219,20 @@
             chip.className = 'favorite-chip';
             chip.innerHTML = `${fav.displayName} <i class="fas fa-times-circle" data-lat="${fav.lat}" data-lon="${fav.lon}" data-name="${escapeHtml(fav.displayName)}"></i>`;
             chip.addEventListener('click', (e) => {
-                if (e.target.tagName === 'I') return; // удаление обрабатывается отдельно
+                if (e.target.tagName === 'I') return;
                 loadWeather(fav.lat, fav.lon, fav.displayName, false);
             });
             const delIcon = chip.querySelector('i');
             delIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
                 removeFavorite(fav.lat, fav.lon);
-                renderFavoritesList();
-                updateFavoriteStar();
             });
             container.appendChild(chip);
         });
+    }
+    function renderAllFavoritesLists() {
+        renderFavoritesList('favoritesListTop', 'favoritesSectionTop');
+        renderFavoritesList('favoritesListBottom', 'favoritesSectionBottom');
     }
     function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 
@@ -426,7 +434,6 @@
             addFavorite(currentCityDisplay, currentLat, currentLon);
         }
         updateFavoriteStar();
-        renderFavoritesList();
     }
 
     // ======================== ОБНОВЛЕНИЕ ========================
