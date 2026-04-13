@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>NCPWEATHER — прогноз с офлайн-режимом</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(145deg, #d9eaff 0%, #c2e0ff 100%); min-height: 100vh; padding: 2rem 1.5rem; }
+        .weather-app { max-width: 1280px; margin: 0 auto; background: rgba(255,255,255,0.92); backdrop-filter: blur(2px); border-radius: 2.5rem; box-shadow: 0 25px 45px -12px rgba(0,80,120,0.35); overflow: hidden; }
+        .header { background: linear-gradient(105deg, #0f6b9e 0%, #1c8bc0 100%); padding: 1.8rem 2.2rem; color: white; }
+        .header-top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.8rem; }
+        .logo h1 { font-weight: 700; font-size: 2rem; display: flex; align-items: center; gap: 12px; }
+        .logo span { font-weight: 500; font-size: 0.85rem; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 60px; margin-left: 8px; }
+        .badge { font-size: 0.75rem; background: rgba(255,255,255,0.25); border-radius: 30px; padding: 4px 12px; }
+        .search-panel { padding: 1.5rem 2rem; background: white; border-bottom: 1px solid #e2eff9; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+        .search-container { position: relative; flex: 2; min-width: 200px; }
+        .search-box { display: flex; gap: 10px; }
+        .search-box input { flex: 1; padding: 12px 18px; border: 1.5px solid #cbe5f5; border-radius: 48px; font-size: 0.95rem; background: #fbfeff; outline: none; width: 100%; }
+        .search-box input:focus { border-color: #1c8bc0; box-shadow: 0 0 0 3px rgba(28,139,192,0.2); }
+        .search-box button, .geo-btn { background: #0f6b9e; border: none; padding: 0 22px; border-radius: 48px; color: white; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .search-box button:hover, .geo-btn:hover { background: #0a547d; transform: scale(0.97); }
+        .geo-btn { background: #3594c4; }
+        .suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.15); max-height: 300px; overflow-y: auto; z-index: 1000; margin-top: 4px; border: 1px solid #cbe5f5; display: none; }
+        .suggestions div { padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #eef2f5; }
+        .suggestions div:hover { background: #e2f0ff; }
+        .suggestion-name { font-weight: 600; color: #0f4468; }
+        .suggestion-detail { font-size: 0.75rem; color: #5f8aa8; margin-left: 8px; }
+        .offline-banner { background: #ffecb3; color: #b76e00; padding: 8px 16px; border-radius: 40px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px; margin-left: 15px; }
+        .current-weather { padding: 2rem 2rem 1rem 2rem; background: white; }
+        .weather-card { background: linear-gradient(125deg, #f9feff 0%, #ffffff 100%); border-radius: 2rem; padding: 1.8rem; box-shadow: 0 12px 28px -8px rgba(0,68,94,0.12); border: 1px solid #ddf0ff; }
+        .location-date { display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .city-name { font-size: 1.7rem; font-weight: 700; color: #0f4468; }
+        .city-name i { color: #1c8bc0; margin-right: 8px; }
+        .date { color: #4f7d9c; font-weight: 500; }
+        .temp-row { display: flex; align-items: center; gap: 1.8rem; flex-wrap: wrap; margin: 1rem 0; }
+        .big-temp { font-size: 4.2rem; font-weight: 800; color: #0f4468; line-height: 1; }
+        .big-temp span { font-size: 1.8rem; font-weight: 500; }
+        .condition-icon { font-size: 3.2rem; }
+        .condition-text { font-size: 1.3rem; font-weight: 600; color: #1e6a92; }
+        .details { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 2px dashed #cde4f2; }
+        .detail-item { background: #eef6fd; border-radius: 2rem; padding: 6px 18px; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+        .weather-comment { background: #e2f0ff; border-radius: 1.5rem; padding: 1rem 1.5rem; margin-top: 1.5rem; font-weight: 600; font-size: 1rem; color: #0e4b70; display: flex; align-items: center; gap: 12px; border-left: 6px solid #1c8bc0; }
+        .forecast-section { padding: 0.5rem 2rem 2rem 2rem; background: white; }
+        .forecast-title { font-size: 1.5rem; font-weight: 700; color: #0f4468; margin-bottom: 1.4rem; display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
+        .forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1.2rem; }
+        .forecast-card { background: #fbfeff; border-radius: 1.5rem; padding: 1rem; text-align: center; border: 1px solid #d3e9fa; transition: 0.2s; }
+        .forecast-card:hover { transform: translateY(-5px); border-color: #7bb9df; box-shadow: 0 14px 24px -12px rgba(27,99,133,0.2); }
+        .forecast-day { font-weight: 800; font-size: 1.1rem; color: #0f6b9e; }
+        .forecast-icon { font-size: 2rem; margin: 8px 0; }
+        .forecast-temp { font-weight: 700; font-size: 1.2rem; color: #0f4468; }
+        .forecast-temp span { font-size: 0.8rem; font-weight: 400; color: #5f8aa8; }
+        .forecast-secret { background: #eef3fc; border-radius: 1rem; padding: 6px 8px; font-size: 0.7rem; font-weight: 600; margin-top: 12px; color: #1e5a7c; }
+        .footer { background: #ecf5fc; padding: 1rem 2rem; text-align: center; font-size: 0.7rem; color: #2f6e92; border-top: 1px solid #cde1ef; }
+        .loader { text-align: center; padding: 2rem; font-size: 1.2rem; color: #1c8bc0; }
+        @media (max-width: 700px) { body { padding: 1rem; } .big-temp { font-size: 3rem; } .search-panel { flex-direction: column; align-items: stretch; } .geo-btn { justify-content: center; } .search-container { width: 100%; } }
+    </style>
+</head>
+<body>
+<div class="weather-app">
+    <div class="header">
+        <div class="header-top">
+            <div class="logo"><h1><i class="fas fa-cloud-sun-rain"></i> NCPWEATHER <span>с офлайн-кэшем</span></h1></div>
+            <div class="badge"><i class="fas fa-database"></i> работает офлайн</div>
+        </div>
+    </div>
+    <div class="search-panel">
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="cityInput" placeholder="Введите город (например, 'Владивосток', 'Томск')" autocomplete="off">
+                <button id="searchBtn"><i class="fas fa-search"></i> Найти</button>
+            </div>
+            <div id="suggestions" class="suggestions"></div>
+        </div>
+        <button id="geoBtn" class="geo-btn"><i class="fas fa-location-dot"></i> Моя геолокация</button>
+    </div>
+    <div id="weatherContent">
+        <div class="loader" id="loadingSpinner"><i class="fas fa-spinner fa-pulse"></i> Загружаем прогноз...</div>
+        <div id="mainData" style="display: none;"></div>
+    </div>
+    <div class="footer"><i class="fas fa-cloud-sun"></i> Данные Open-Meteo | последний прогноз сохраняется офлайн</div>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    //  ФУНКЦИИ ДЛЯ РАБОТЫ С КЭШЕМ (localStorage)
+    // --------------------------------------------------------------
+    function saveWeatherToCache(cityName, weatherDataForRender, timestamp) {
+        const cache = {
+            city: cityName,
+            data: weatherDataForRender, // объект, содержащий всё для отрисовки
+            timestamp: timestamp,
+            expires: timestamp + 3600000 // 1 час
+        };
+        localStorage.setItem('ncpweather_cache', JSON.stringify(cache));
+    }
+
+    function loadWeatherFromCache() {
+        const cached = localStorage.getItem('ncpweather_cache');
+        if (!cached) return null;
+        try {
+            const cache = JSON.parse(cached);
+            const isExpired = Date.now() > cache.expires;
+            return { ...cache, isExpired };
+        } catch(e) { return null; }
+    }
+
+    // Отрисовка из кэша (данные уже подготовлены)
+    function renderFromCache(cache) {
+        const { city, data } = cache;
+        // data содержит: currentTemp, feelsLike, humidity, windSpeed, weatherCode, weatherInfo, comment, formattedDate, dailyForecast
+        const weatherInfo = data.weatherInfo;
+        const now = new Date();
+        const formattedDate = data.formattedDate || now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' });
+        let html = `
+            <div class="current-weather">
+                <div class="weather-card">
+                    <div class="location-date">
+                        <div class="city-name"><i class="fas fa-map-marker-alt"></i> ${city} ${cache.isExpired ? '<span class="offline-banner"><i class="fas fa-hourglass-half"></i> данные устарели, нет сети</span>' : '<span class="offline-banner"><i class="fas fa-wifi-slash"></i> офлайн-режим</span>'}</div>
+                        <div class="date"><i class="far fa-calendar-alt"></i> ${formattedDate}</div>
+                    </div>
+                    <div class="temp-row">
+                        <div class="big-temp">${data.currentTemp}<span>°C</span></div>
+                        <div class="condition-icon">${weatherInfo.emoji}</div>
+                        <div class="condition-text">${weatherInfo.text}</div>
+                    </div>
+                    <div class="details">
+                        <div class="detail-item"><i class="fa-solid fa-temperature-low"></i> Ощущается: ${data.feelsLike}°</div>
+                        <div class="detail-item"><i class="fa-solid fa-droplet"></i> Влажность: ${data.humidity}%</div>
+                        <div class="detail-item"><i class="fa-solid fa-wind"></i> Ветер: ${data.windSpeed} км/ч</div>
+                    </div>
+                    <div class="weather-comment"><i class="fa-regular fa-message"></i> <span>${data.comment}</span></div>
+                </div>
+            </div>
+            <div class="forecast-section">
+                <div class="forecast-title"><span><i class="fa-regular fa-calendar-week"></i> Прогноз на 5 дней (кэш)</span></div>
+                <div class="forecast-grid" id="forecastGrid"></div>
+            </div>
+        `;
+        document.getElementById('mainData').innerHTML = html;
+        const forecastGrid = document.getElementById('forecastGrid');
+        forecastGrid.innerHTML = '';
+        for (let i = 0; i < data.dailyForecast.length; i++) {
+            const day = data.dailyForecast[i];
+            const card = document.createElement('div');
+            card.className = 'forecast-card';
+            card.innerHTML = `
+                <div class="forecast-day">${day.weekday}</div>
+                <div class="forecast-icon">${day.emoji}</div>
+                <div class="forecast-temp">${day.maxTemp}°<span> / ${day.minTemp}°</span></div>
+                <div class="forecast-secret"><i class="fa-regular fa-lightbulb"></i> ${day.secret}</div>
+            `;
+            forecastGrid.appendChild(card);
+        }
+    }
+
+    // --------------------------------------------------------------
+    //  ОПРЕДЕЛЕНИЕ КАТЕГОРИИ ПОГОДЫ ПО КОДУ WMO
+    // --------------------------------------------------------------
+    function getWeatherCategory(code) {
+        if ([0,1].includes(code)) return 'clear';
+        if ([2,3].includes(code)) return 'cloudy';
+        if ([45,48].includes(code)) return 'fog';
+        if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)) return 'rain';
+        if ([71,73,75,77,85,86].includes(code)) return 'snow';
+        if ([95,96,99].includes(code)) return 'thunder';
+        return 'default';
+    }
+
+    // --------------------------------------------------------------
+    //  ФРАЗЫ
+    // --------------------------------------------------------------
+    const phrases = {
+        heat: [
+            "🥵 Жара заставляет вспомнить все ругательства, которые ты знаешь.",
+            "🍦 Единственный спасшийся сегодня — мороженое. Купи две порции.",
+            "☀️ Солнце решило, что ты недостаточно загорел. Спрячься!",
+            "🔥 Кондиционер работает за троих. Скажи ему спасибо.",
+            "🧊 Город превратился в сковородку. Не забудь прихватки.",
+            "🌡️ Термометр показывает {temp}° — пора переселяться в холодильник.",
+            "🥤 {city}, ты в порядке? Это пекло испытание на прочность."
+        ],
+        cold: [
+            "❄️ Холодно, как в сердце бывшего. Грейся чаем.",
+            "🧤 Твоя шапка сейчас важнее диплома. Надевай!",
+            "🥶 Мороз рисует на окнах узоры, а ты рисуешь планы остаться дома.",
+            "☕ Согреться можно только третьей кружкой кофе. Не спорь.",
+            "🧣 Синоптики сказали «холодно», а ты сказал «ну я предупреждал».",
+            "🌬️ {temp}° — это не холод, это приключение. Одевайся как капуста.",
+            "🧤 {city} замерзает, но мы держимся!"
+        ],
+        rain: [
+            "☔ Дождь — это небо решило помыть твои окна. Бесплатно!",
+            "🌧️ Сегодня зонт — твой самый верный друг. Не предавай его.",
+            "💧 Лужи отражают твою задумчивость. Или просто грусть.",
+            "🌦️ Дождь идёт, а ты всё равно молодец. Выпей горячего какао.",
+            "🧥 Сырость пробирает до костей. Но ты сильнее.",
+            "☔ В {city} дождливо — самое время для чая и книжки.",
+            "🌧️ Зонт не забыл? Нет? Ты сегодня победитель."
+        ],
+        snow: [
+            "⛄ Снег — это привет от зимы. Скажи ей «спасибо» и иди лепить снеговика.",
+            "❄️ Сугробы растут быстрее твоих амбиций. Смирись.",
+            "🌨️ Белым-бело, а ты всё в делах. Остановись, снежок поймай.",
+            "🧤 Снежинки на ресницах — лучшее украшение сегодня.",
+            "☃️ Идеальный день, чтобы остаться дома с пледом и сериалом.",
+            "❄️ {city} засыпает снегом — красота неописуемая!",
+            "⛄ Пора доставать варежки и горячий шоколад."
+        ],
+        thunder: [
+            "⚡ Гроза — это небо играет в рок-концерт. Держись подальше от розеток.",
+            "🌩️ Молния сверкает, а ты радуешься, что успел домой.",
+            "⛈️ Гром гремит так, будто кто-то двигает мебель на небесах.",
+            "🔊 Отключи технику, включи чай и наблюдай за шоу.",
+            "🎸 Гроза с градом — природа решила показать, кто тут главный.",
+            "⚡ В {city} гроза — атмосфера накалена до предела.",
+            "🌩️ Лучше сидеть дома и не злить Зевса."
+        ],
+        fog: [
+            "🌫️ Туман густой, как утренние мысли. Ничего не видно, но ты справишься.",
+            "👻 Город в молоке — время для загадочных прогулок.",
+            "🌁 Туман скрывает всё, кроме твоего хорошего настроения. Надейся на него.",
+            "🚗 Видимость плохая, но цель ясна — дойти до кофейни.",
+            "🧙‍♂️ В таком тумане можно встретить волшебника. Будь готов.",
+            "🌫️ {city} в тумане — как в сказке. Осторожнее за рулём."
+        ],
+        clear: [
+            "😎 Солнце светит прямо в глаза — отличный повод для солнечных очков.",
+            "🌞 Ясный день, как ясная мысль. Реализуй что-нибудь классное.",
+            "🕶️ Сегодня можно смело говорить «погода шепчет».",
+            "☀️ Небо без облаков — твоё настроение без проблем. Лови момент.",
+            "🌅 Отличный день, чтобы отложить дела и погулять. Серьёзно.",
+            "☀️ В {city} солнечно — заряжаемся витамином D!",
+            "😎 Идеальная погода, чтобы не сидеть дома."
+        ],
+        cloudy: [
+            "☁️ Облачно, но не грустно. Солнце скоро пробьётся.",
+            "⛅ Погода как в фильмах про Англию. Добавь зонтик для атмосферы.",
+            "🌥️ Небо в раздумьях — и ты в раздумьях. Нормально.",
+            "☁️ Пасмурно, но это не повод хмуриться. Кофе решит всё.",
+            "🌤️ Облака сегодня красивые. Посмотри вверх, там интересно.",
+            "⛅ В {city} облачно — но это лучше, чем дождь.",
+            "☁️ День обещает быть спокойным. Выдохни."
+        ],
+        default: [
+            "🌈 Погода непредсказуема, как твои планы на выходные. Будь гибким.",
+            "🎭 Сегодня у природы своё настроение. Подстройся.",
+            "🌟 Даже если погода хмурится, ты улыбайся. Это работает.",
+            "🍃 Ветер перемен? Возможно, это он. Лови момент.",
+            "🌡️ Градусник показывает... что пора одеваться по погоде. Умно, да?"
+        ]
+    };
+
+    function getRandomFromArray(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function formatPhrase(phrase, temp, city) { return phrase.replace('{temp}', temp).replace('{city}', city.split(',')[0]); }
+
+    function getComment(weatherCode, tempC, city) {
+        let category;
+        if (tempC >= 28) category = 'heat';
+        else if (tempC <= -8) category = 'cold';
+        else category = getWeatherCategory(weatherCode);
+        let pool = phrases[category] || phrases.default;
+        let raw = getRandomFromArray(pool);
+        return formatPhrase(raw, tempC, city);
+    }
+
+    function getDailySecret(weatherCode, maxTemp, dayName, city) {
+        let category;
+        if (maxTemp >= 28) category = 'heat';
+        else if (maxTemp <= -8) category = 'cold';
+        else category = getWeatherCategory(weatherCode);
+        let pool = [];
+        switch(category) {
+            case 'heat': pool = [`В ${dayName} будет жарко, как в сауне. Держись!`, `${maxTemp}° — это не шутки. Пей воду.`, `Солнце печёт — спрячься в тень.`]; break;
+            case 'cold': pool = [`${dayName}: холодрыга до костей. Одевайся теплее.`, `${maxTemp}° — время для горячего чая.`, `Мороз и солнце — день чудесный, но холодный.`]; break;
+            case 'rain': pool = [`В ${dayName} дождь — зонт обязателен.`, `Мокро и сыро, зато уютно дома.`, `Лужи будут большими — обувай резину.`]; break;
+            case 'snow': pool = [`${dayName} снежный — бери лопату или какао.`, `Сугробы растут — радуйся зиме.`, `Идеально для снежков, но не для пробок.`]; break;
+            case 'thunder': pool = [`В ${dayName} небо устроит шоу. Сиди дома.`, `Гроза — повод выключить всё и помечтать.`, `Гром и молния: чай и плед в приоритете.`]; break;
+            case 'fog': pool = [`Туман в ${dayName} — как загадка. Осторожнее на дорогах.`, `Ничего не видно, но ты и так всё знаешь.`, `Молочная пелена — время для медитации.`]; break;
+            case 'clear': pool = [`${dayName} будет ясным — выгуляй себя и свои мысли.`, `Солнце светит, птицы поют — отлично!`, `Ясный день — хороший день для прогулки.`]; break;
+            default: pool = [`${dayName}: погода как настроение — переменчива.`, `Будь готов к любым сюрпризам природы.`, `Главное — хорошее настроение.`];
+        }
+        let raw = getRandomFromArray(pool);
+        return raw;
+    }
+
+    // --------------------------------------------------------------
+    //  ПОГОДНЫЕ КОДЫ
+    // --------------------------------------------------------------
+    function getWeatherInfo(code) {
+        const map = {
+            0: { text: "Ясно", emoji: "☀️" }, 1: { text: "В основном ясно", emoji: "🌤️" },
+            2: { text: "Переменная облачность", emoji: "⛅" }, 3: { text: "Пасмурно", emoji: "☁️" },
+            45: { text: "Туман", emoji: "🌫️" }, 48: { text: "Туман с изморозью", emoji: "🌫️❄️" },
+            51: { text: "Мелкая морось", emoji: "🌦️" }, 53: { text: "Морось", emoji: "🌧️" },
+            55: { text: "Сильная морось", emoji: "🌧️💧" }, 56: { text: "Ледяная морось", emoji: "🧊🌧️" },
+            57: { text: "Сильная ледяная морось", emoji: "❄️🧊" }, 61: { text: "Небольшой дождь", emoji: "🌦️" },
+            63: { text: "Дождь", emoji: "🌧️" }, 65: { text: "Сильный дождь", emoji: "🌧️💦" },
+            66: { text: "Ледяной дождь", emoji: "🧊🌧️" }, 67: { text: "Сильный ледяной дождь", emoji: "❄️🧊🌧️" },
+            71: { text: "Небольшой снег", emoji: "🌨️" }, 73: { text: "Снег", emoji: "❄️🌨️" },
+            75: { text: "Сильный снег", emoji: "❄️❄️" }, 77: { text: "Снежная крупа", emoji: "🌨️🍚" },
+            80: { text: "Ливневый дождь", emoji: "☔🌧️" }, 81: { text: "Сильный ливень", emoji: "⛈️💧" },
+            82: { text: "Шквальный ливень", emoji: "💦🌊" }, 85: { text: "Снегопад", emoji: "❄️🌨️" },
+            86: { text: "Сильный снегопад", emoji: "❄️❄️🌨️" }, 95: { text: "Гроза", emoji: "⛈️" },
+            96: { text: "Гроза с градом", emoji: "⛈️🧊" }, 99: { text: "Сильная гроза с градом", emoji: "🌩️🧊🔥" }
+        };
+        return map[code] || { text: "Особая погода", emoji: "🌡️" };
+    }
+
+    // --------------------------------------------------------------
+    //  ОСНОВНАЯ ЛОГИКА ЗАГРУЗКИ С СОХРАНЕНИЕМ В КЭШ
+    // --------------------------------------------------------------
+    let currentOnline = navigator.onLine;
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const mainDataDiv = document.getElementById('mainData');
+    const cityInput = document.getElementById('cityInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const geoBtn = document.getElementById('geoBtn');
+
+    function setLoading(loading) {
+        if (loading) {
+            loadingSpinner.style.display = 'block';
+            mainDataDiv.style.display = 'none';
+        } else {
+            loadingSpinner.style.display = 'none';
+            mainDataDiv.style.display = 'block';
+        }
+    }
+
+    async function fetchAndRenderWeather(lat, lon, displayName) {
+        setLoading(true);
+        try {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relativehumidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5`;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error("Ошибка сети");
+            const data = await resp.json();
+            const current = data.current;
+            const daily = data.daily;
+            const currentTemp = Math.round(current.temperature_2m);
+            const feelsLike = Math.round(current.apparent_temperature);
+            const humidity = current.relativehumidity_2m;
+            const windSpeed = Math.round(current.wind_speed_10m);
+            const weatherCode = current.weather_code;
+            const weatherInfo = getWeatherInfo(weatherCode);
+            const comment = getComment(weatherCode, currentTemp, displayName);
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' });
+            
+            // Подготовка прогноза
+            const dailyForecast = [];
+            for (let i = 0; i < daily.time.length && i < 5; i++) {
+                const dayDate = new Date(daily.time[i]);
+                const weekday = dayDate.toLocaleDateString('ru-RU', { weekday: 'short' });
+                const maxTemp = Math.round(daily.temperature_2m_max[i]);
+                const minTemp = Math.round(daily.temperature_2m_min[i]);
+                const dayWeatherCode = daily.weather_code[i];
+                const dayWeatherInfo = getWeatherInfo(dayWeatherCode);
+                const secret = getDailySecret(dayWeatherCode, maxTemp, weekday, displayName);
+                dailyForecast.push({
+                    weekday, maxTemp, minTemp, emoji: dayWeatherInfo.emoji, secret
+                });
+            }
+            
+            // Отрисовка на экран
+            let html = `
+                <div class="current-weather">
+                    <div class="weather-card">
+                        <div class="location-date">
+                            <div class="city-name"><i class="fas fa-map-marker-alt"></i> ${displayName}</div>
+                            <div class="date"><i class="far fa-calendar-alt"></i> ${formattedDate}</div>
+                        </div>
+                        <div class="temp-row">
+                            <div class="big-temp">${currentTemp}<span>°C</span></div>
+                            <div class="condition-icon">${weatherInfo.emoji}</div>
+                            <div class="condition-text">${weatherInfo.text}</div>
+                        </div>
+                        <div class="details">
+                            <div class="detail-item"><i class="fa-solid fa-temperature-low"></i> Ощущается: ${feelsLike}°</div>
+                            <div class="detail-item"><i class="fa-solid fa-droplet"></i> Влажность: ${humidity}%</div>
+                            <div class="detail-item"><i class="fa-solid fa-wind"></i> Ветер: ${windSpeed} км/ч</div>
+                        </div>
+                        <div class="weather-comment"><i class="fa-regular fa-message"></i> <span>${comment}</span></div>
+                    </div>
+                </div>
+                <div class="forecast-section">
+                    <div class="forecast-title"><span><i class="fa-regular fa-calendar-week"></i> Прогноз на 5 дней</span></div>
+                    <div class="forecast-grid" id="forecastGrid"></div>
+                </div>
+            `;
+            mainDataDiv.innerHTML = html;
+            const forecastGrid = document.getElementById('forecastGrid');
+            forecastGrid.innerHTML = '';
+            for (let day of dailyForecast) {
+                const card = document.createElement('div');
+                card.className = 'forecast-card';
+                card.innerHTML = `
+                    <div class="forecast-day">${day.weekday}</div>
+                    <div class="forecast-icon">${day.emoji}</div>
+                    <div class="forecast-temp">${day.maxTemp}°<span> / ${day.minTemp}°</span></div>
+                    <div class="forecast-secret"><i class="fa-regular fa-lightbulb"></i> ${day.secret}</div>
+                `;
+                forecastGrid.appendChild(card);
+            }
+            
+            // Сохраняем в кэш
+            const cacheData = {
+                currentTemp, feelsLike, humidity, windSpeed, weatherCode, weatherInfo, comment, formattedDate,
+                dailyForecast: dailyForecast
+            };
+            saveWeatherToCache(displayName, cacheData, Date.now());
+            setLoading(false);
+        } catch (err) {
+            console.error(err);
+            // Если нет интернета или ошибка — пробуем кэш
+            const cached = loadWeatherFromCache();
+            if (cached) {
+                renderFromCache(cached);
+                setLoading(false);
+            } else {
+                setLoading(false);
+                mainDataDiv.style.display = 'block';
+                mainDataDiv.innerHTML = `<div style="background:#ffe6e6; border-radius:2rem; padding:2rem; margin:2rem; text-align:center; color:#b13e3e;"><i class="fa-solid fa-triangle-exclamation"></i> Ошибка загрузки: ${err.message}. Нет интернета и нет сохранённого прогноза.</div>`;
+            }
+        }
+    }
+
+    // --------------------------------------------------------------
+    //  ПОИСК ГОРОДА И ГЕОЛОКАЦИЯ
+    // --------------------------------------------------------------
+    async function searchCity(cityNameRaw) {
+        setLoading(true);
+        try {
+            const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityNameRaw)}&count=1&language=ru&format=json`;
+            const resp = await fetch(geoUrl);
+            const data = await resp.json();
+            if (!data.results || data.results.length === 0) throw new Error("Город не найден");
+            const result = data.results[0];
+            const lat = result.latitude;
+            const lon = result.longitude;
+            let display = result.name;
+            if (result.admin1) display += `, ${result.admin1}`;
+            if (result.country) display += `, ${result.country}`;
+            await fetchAndRenderWeather(lat, lon, display);
+            cityInput.value = display;
+        } catch (err) {
+            setLoading(false);
+            mainDataDiv.style.display = 'block';
+            mainDataDiv.innerHTML = `<div style="background:#ffe6e6; border-radius:2rem; padding:2rem; margin:2rem; text-align:center;"><i class="fa-solid fa-city"></i> Город "${cityNameRaw}" не найден. Попробуйте выбрать из подсказок.</div>`;
+        }
+    }
+
+    function getUserLocation() {
+        if (!navigator.geolocation) { alert("Геолокация не поддерживается"); return; }
+        setLoading(true);
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            try {
+                const revGeoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1&accept-language=ru`;
+                const revResp = await fetch(revGeoUrl, { headers: { 'User-Agent': 'NCPWeather/1.0' } });
+                const revData = await revResp.json();
+                let cityFromRev = revData.address?.city || revData.address?.town || revData.address?.village || "";
+                let region = revData.address?.state || revData.address?.region || "";
+                let finalName = cityFromRev ? (region ? `${cityFromRev}, ${region}` : cityFromRev) : `Координаты (${lat.toFixed(1)}, ${lon.toFixed(1)})`;
+                await fetchAndRenderWeather(lat, lon, finalName);
+                cityInput.value = finalName;
+            } catch (e) {
+                await fetchAndRenderWeather(lat, lon, `Ваши координаты (${lat.toFixed(1)}, ${lon.toFixed(1)})`);
+            }
+        }, (err) => {
+            setLoading(false);
+            mainDataDiv.style.display = 'block';
+            mainDataDiv.innerHTML = `<div style="background:#ffe0e0; border-radius:2rem; padding:2rem; margin:2rem; text-align:center;">⚠️ Доступ к геолокации запрещён.</div>`;
+        });
+    }
+
+    // --------------------------------------------------------------
+    //  ПОДСКАЗКИ
+    // --------------------------------------------------------------
+    let currentSuggestions = [];
+    let suggestionsBox = document.getElementById('suggestions');
+    let debounceTimer;
+    async function fetchCitySuggestions(query) {
+        if (query.length < 3) return [];
+        try {
+            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=ru&format=json`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (!data.results) return [];
+            return data.results.map(city => ({
+                name: city.name,
+                admin1: city.admin1 || '',
+                country: city.country || '',
+                latitude: city.latitude,
+                longitude: city.longitude,
+                display: city.name + (city.admin1 ? `, ${city.admin1}` : '') + (city.country ? `, ${city.country}` : '')
+            }));
+        } catch(e) { return []; }
+    }
+    function renderSuggestions(suggestions) {
+        if (!suggestions.length) { suggestionsBox.style.display = 'none'; return; }
+        suggestionsBox.innerHTML = '';
+        suggestions.forEach(s => {
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="suggestion-name">${escapeHtml(s.name)}</span><span class="suggestion-detail">${escapeHtml(s.admin1 ? s.admin1 : '')}${s.admin1 && s.country ? ', ' : ''}${escapeHtml(s.country || '')}</span>`;
+            div.addEventListener('click', () => {
+                cityInput.value = s.display;
+                suggestionsBox.style.display = 'none';
+                fetchAndRenderWeather(s.latitude, s.longitude, s.display);
+            });
+            suggestionsBox.appendChild(div);
+        });
+        suggestionsBox.style.display = 'block';
+    }
+    function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+    cityInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        const val = e.target.value.trim();
+        if (val.length < 3) { suggestionsBox.style.display = 'none'; return; }
+        debounceTimer = setTimeout(async () => {
+            const sugg = await fetchCitySuggestions(val);
+            renderSuggestions(sugg);
+        }, 400);
+    });
+    document.addEventListener('click', (e) => {
+        if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) suggestionsBox.style.display = 'none';
+    });
+
+    // --------------------------------------------------------------
+    //  ОБРАБОТЧИКИ И ЗАПУСК
+    // --------------------------------------------------------------
+    searchBtn.addEventListener('click', () => {
+        const city = cityInput.value.trim();
+        if (city) searchCity(city);
+        else alert("Введите город");
+    });
+    geoBtn.addEventListener('click', getUserLocation);
+
+    // При запуске: если есть кэш и нет сети — показать кэш, иначе загрузить Москву
+    if (!navigator.onLine) {
+        const cached = loadWeatherFromCache();
+        if (cached) {
+            renderFromCache(cached);
+            setLoading(false);
+        } else {
+            // всё равно попробуем загрузить Москву (упадёт, но покажет ошибку)
+            searchCity("Москва");
+        }
+    } else {
+        searchCity("Москва");
+    }
+
+    // Слушаем события онлайн/офлайн для обновления интерфейса
+    window.addEventListener('online', () => {
+        // если стали онлайн, можно обновить текущий город
+        const currentCity = cityInput.value;
+        if (currentCity) searchCity(currentCity);
+    });
+</script>
+</body>
+</html>
