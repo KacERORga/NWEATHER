@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>NCPWEATHER — избранное (два блока)</title>
+    <title>NCPWEATHER — офлайн-режим</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -70,6 +70,81 @@
         .footer a { color: #1c6d96; text-decoration: none; cursor: pointer; }
         .footer a:hover { text-decoration: underline; }
         .loader { text-align: center; padding: 2rem; font-size: 1.2rem; color: #1c8bc0; }
+        
+        /* Кастомная страница "нет интернета" */
+        .offline-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 3rem 2rem;
+            background: white;
+            border-radius: 2rem;
+            margin: 2rem;
+        }
+        .offline-icon {
+            font-size: 5rem;
+            color: #ff9800;
+            margin-bottom: 1.5rem;
+            animation: float 2s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .offline-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #0f4468;
+            margin-bottom: 1rem;
+        }
+        .offline-message {
+            color: #5f8aa8;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            max-width: 400px;
+        }
+        .offline-suggestions {
+            background: #eef6fd;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+            width: 100%;
+            max-width: 350px;
+        }
+        .offline-suggestions p {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #0f4468;
+        }
+        .offline-suggestions ul {
+            margin-left: 1.5rem;
+            color: #4f7d9c;
+        }
+        .offline-suggestions li {
+            margin: 0.3rem 0;
+        }
+        .retry-btn {
+            background: #1c8bc0;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 48px;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .retry-btn:hover {
+            background: #0f6b9e;
+            transform: scale(0.98);
+        }
+        
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
         .modal-content { background: white; max-width: 600px; width: 90%; max-height: 80vh; border-radius: 2rem; overflow-y: auto; box-shadow: 0 20px 35px -10px rgba(0,0,0,0.3); animation: fadeIn 0.2s ease; }
         .modal-header { background: linear-gradient(105deg, #0f6b9e 0%, #1c8bc0 100%); padding: 1rem 1.5rem; color: white; display: flex; justify-content: space-between; align-items: center; }
@@ -89,8 +164,8 @@
 <div class="weather-app">
     <div class="header">
         <div class="header-top">
-            <div class="logo"><h1><i class="fas fa-cloud-sun-rain"></i> NCPWEATHER <span>избранное</span></h1></div>
-            <div class="badge"><i class="fas fa-star"></i> два блока</div>
+            <div class="logo"><h1><i class="fas fa-cloud-sun-rain"></i> NCPWEATHER <span>офлайн-режим</span></h1></div>
+            <div class="badge"><i class="fas fa-wifi"></i> кастомный офлайн</div>
         </div>
     </div>
     <div class="search-panel">
@@ -103,7 +178,6 @@
         </div>
         <button id="geoBtn" class="geo-btn"><i class="fas fa-location-dot"></i> Моя геолокация</button>
     </div>
-    <!-- Верхний блок избранного -->
     <div id="favoritesSectionTop" class="favorites-section" style="display: none;">
         <div class="favorites-title"><i class="fas fa-star"></i> Избранные города (быстрый доступ)</div>
         <div id="favoritesListTop" class="favorites-list"></div>
@@ -112,7 +186,6 @@
         <div class="loader" id="loadingSpinner" style="display: none;"><i class="fas fa-spinner fa-pulse"></i> <span id="loadingText">Загрузка...</span></div>
         <div id="mainData" style="display: none;"></div>
     </div>
-    <!-- Нижний блок избранного -->
     <div id="favoritesSectionBottom" class="favorites-section" style="display: none;">
         <div class="favorites-title"><i class="fas fa-star"></i> Избранные города</div>
         <div id="favoritesListBottom" class="favorites-list"></div>
@@ -166,7 +239,7 @@
     function getCachedWeather(lat, lon) { return loadFromCache(`weather_${lat}_${lon}`); }
     function deleteCachedWeather(lat, lon) { localStorage.removeItem(`weather_${lat}_${lon}`); }
 
-    // ======================== ИЗБРАННЫЕ ГОРОДА (два блока) ========================
+    // ======================== ИЗБРАННЫЕ ГОРОДА ========================
     let favorites = [];
     function loadFavorites() {
         const saved = localStorage.getItem('ncpweather_favorites');
@@ -217,7 +290,7 @@
         favorites.forEach(fav => {
             const chip = document.createElement('div');
             chip.className = 'favorite-chip';
-            chip.innerHTML = `${fav.displayName} <i class="fas fa-times-circle" data-lat="${fav.lat}" data-lon="${fav.lon}" data-name="${escapeHtml(fav.displayName)}"></i>`;
+            chip.innerHTML = `${escapeHtml(fav.displayName)} <i class="fas fa-times-circle" data-lat="${fav.lat}" data-lon="${fav.lon}" data-name="${escapeHtml(fav.displayName)}"></i>`;
             chip.addEventListener('click', (e) => {
                 if (e.target.tagName === 'I') return;
                 loadWeather(fav.lat, fav.lon, fav.displayName, false);
@@ -236,10 +309,72 @@
     }
     function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 
+    // ======================== КАСТОМНАЯ СТРАНИЦА ОТСУТСТВИЯ ИНТЕРНЕТА ========================
+    function showOfflinePage() {
+        const offlineHTML = `
+            <div class="offline-page">
+                <div class="offline-icon">
+                    <i class="fas fa-wifi-slash"></i>
+                </div>
+                <div class="offline-title">Нет подключения к интернету</div>
+                <div class="offline-message">
+                    Не удалось загрузить свежие данные о погоде. Проверьте подключение к сети.
+                </div>
+                <div class="offline-suggestions">
+                    <p><i class="fas fa-lightbulb"></i> Что можно сделать:</p>
+                    <ul>
+                        <li>🔌 Проверьте кабель или Wi‑Fi</li>
+                        <li>📱 Включите мобильные данные</li>
+                        <li>🔄 Перезагрузите роутер</li>
+                        <li>⭐ Если у вас есть избранные города, попробуйте выбрать их из списка (они могут быть в кэше)</li>
+                    </ul>
+                </div>
+                <button class="retry-btn" id="retryConnectionBtn">
+                    <i class="fas fa-sync-alt"></i> Попробовать снова
+                </button>
+            </div>
+        `;
+        document.getElementById('mainData').innerHTML = offlineHTML;
+        document.getElementById('mainData').style.display = 'block';
+        document.getElementById('loadingSpinner').style.display = 'none';
+        
+        const retryBtn = document.getElementById('retryConnectionBtn');
+        if (retryBtn) {
+            retryBtn.onclick = () => {
+                if (navigator.onLine) {
+                    // если интернет появился, перезагружаем текущий город
+                    if (currentCityDisplay && currentLat && currentLon) {
+                        loadWeather(currentLat, currentLon, currentCityDisplay, true);
+                    } else {
+                        searchCity("Москва");
+                    }
+                } else {
+                    // всё ещё нет интернета, пробуем показать кэш
+                    const lastCity = localStorage.getItem('ncpweather_last_city');
+                    if (lastCity) {
+                        try {
+                            const parsed = JSON.parse(lastCity);
+                            const cached = getCachedWeather(parsed.lat, parsed.lon);
+                            if (cached) {
+                                renderWeather(parsed.display, cached, true, false);
+                                currentLat = parsed.lat; currentLon = parsed.lon; currentCityDisplay = parsed.display;
+                                updateFavoriteStar();
+                                return;
+                            }
+                        } catch(e) {}
+                    }
+                    // если кэша нет, показываем сообщение
+                    alert("Всё ещё нет интернета и нет сохранённого прогноза. Подключитесь к сети.");
+                }
+            };
+        }
+    }
+
     // ======================== ГЕОКОДИНГ ========================
     async function searchCityGeocode(query) {
         const cached = getCachedGeocode(query);
         if (cached) return cached;
+        if (!navigator.onLine) return [];
         const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=ru&format=json`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -272,6 +407,7 @@
             const cached = getCachedWeather(lat, lon);
             if (cached) return cached;
         }
+        if (!navigator.onLine) throw new Error("Нет подключения к интернету");
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relativehumidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5`;
         let lastError;
         for (let attempt = 1; attempt <= 3; attempt++) {
@@ -453,8 +589,7 @@
                 renderWeather(currentCityDisplay, cached, true, false);
                 alert("Не удалось обновить данные, показан кэшированный прогноз.");
             } else {
-                document.getElementById('mainData').innerHTML = `<div class="error-message"><i class="fas fa-triangle-exclamation"></i> Ошибка обновления: ${err.message}</div>`;
-                document.getElementById('mainData').style.display = 'block';
+                showOfflinePage();
             }
         }
     }
@@ -497,8 +632,7 @@
                 currentLat = lat; currentLon = lon; currentCityDisplay = displayName;
                 updateFavoriteStar();
             } else {
-                mainDataDiv.innerHTML = `<div class="error-message"><i class="fas fa-triangle-exclamation"></i> Ошибка: ${err.message}. Проверьте интернет или попробуйте позже.</div>`;
-                mainDataDiv.style.display = 'block';
+                showOfflinePage();
             }
         }
     }
@@ -514,8 +648,12 @@
             await loadWeather(best.lat, best.lon, display, false);
         } catch (err) {
             setLoading(false);
-            mainDataDiv.innerHTML = `<div class="error-message"><i class="fas fa-city"></i> ${err.message}</div>`;
-            mainDataDiv.style.display = 'block';
+            if (!navigator.onLine) {
+                showOfflinePage();
+            } else {
+                mainDataDiv.innerHTML = `<div class="error-message"><i class="fas fa-city"></i> ${err.message}</div>`;
+                mainDataDiv.style.display = 'block';
+            }
         }
     }
 
@@ -538,8 +676,12 @@
             }
         }, (err) => {
             setLoading(false);
-            mainDataDiv.innerHTML = `<div class="error-message"><i class="fas fa-lock"></i> Доступ к геолокации запрещён. Введите город вручную.</div>`;
-            mainDataDiv.style.display = 'block';
+            if (!navigator.onLine) {
+                showOfflinePage();
+            } else {
+                mainDataDiv.innerHTML = `<div class="error-message"><i class="fas fa-lock"></i> Доступ к геолокации запрещён. Введите город вручную.</div>`;
+                mainDataDiv.style.display = 'block';
+            }
         });
     }
 
@@ -549,6 +691,10 @@
     async function updateSuggestions() {
         const query = cityInput.value.trim();
         if (query.length < 2) { suggestBox.style.display = 'none'; return; }
+        if (!navigator.onLine) {
+            suggestBox.style.display = 'none';
+            return;
+        }
         const results = await searchCityGeocode(query);
         if (!results.length) { suggestBox.style.display = 'none'; return; }
         suggestBox.innerHTML = '';
@@ -574,6 +720,15 @@
     searchBtn.onclick = () => { const c = cityInput.value.trim(); if (c) searchCity(c); else alert("Введите город"); };
     geoBtn.onclick = getUserLocation;
 
+    // Слушаем события онлайн/офлайн
+    window.addEventListener('online', () => {
+        if (currentCityDisplay && currentLat && currentLon) {
+            loadWeather(currentLat, currentLon, currentCityDisplay, true);
+        } else {
+            searchCity("Москва");
+        }
+    });
+
     // Старт: загружаем избранное и запускаем погоду
     loadFavorites();
     (async () => {
@@ -593,8 +748,10 @@
                     }
                 } catch(e) {}
             }
+            showOfflinePage();
+        } else {
+            searchCity("Москва");
         }
-        searchCity("Москва");
     })();
 </script>
 </body>
